@@ -10,9 +10,10 @@
 # current binary, swaps it in, and writes a matching Info.plist.
 #
 # Usage:
-#   update-xcode-claude.sh <version>     e.g. update-xcode-claude.sh 2.1.195
-#   update-xcode-claude.sh --current     show what's installed/running now
-#   update-xcode-claude.sh --restore     roll back to the most recent backup
+#   update-xcode-claude.sh <version>       e.g. update-xcode-claude.sh 2.1.195
+#   update-xcode-claude.sh latest          install the latest GitHub release
+#   update-xcode-claude.sh --current       show what's installed/running now
+#   update-xcode-claude.sh --restore       roll back to the most recent backup
 #
 # Notes:
 #   * Quit Xcode (Cmd+Q) before running an install — the binary is in use otherwise.
@@ -23,6 +24,7 @@ set -euo pipefail
 
 # --- Configuration ----------------------------------------------------------
 CDN_BASE="https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases"
+LATEST_RELEASE_API="https://api.github.com/repos/anthropics/claude-code/releases/latest"
 AGENTS_ROOT="$HOME/Library/Developer/Xcode/CodingAssistant/Agents"
 XCODE_VERSIONS_DIR="$AGENTS_ROOT/XcodeVersions"
 CACHE_DIR="$AGENTS_ROOT/claude"   # versioned download cache: claude/<version>/
@@ -65,6 +67,39 @@ xcode_is_running() {
 binary_version() {
     # Prints the version a binary reports, or nothing on failure.
     "$1" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true
+}
+
+resolve_latest_version() {
+    local tmp tag version
+    tmp="$(mktemp -t claude-latest-release)"
+
+    if ! curl -fsSL \
+        -H "Accept: application/vnd.github+json" \
+        -H "User-Agent: xcode-claude-updater" \
+        -o "$tmp" \
+        "$LATEST_RELEASE_API"; then
+        rm -f "$tmp"
+        err "Could not fetch the latest Claude Code release from GitHub."
+        err "Check your internet connection or install a specific version manually."
+        return 1
+    fi
+
+    tag=""
+    if command -v plutil >/dev/null 2>&1; then
+        tag=$(plutil -extract tag_name raw -o - "$tmp" 2>/dev/null || true)
+    fi
+    if [ -z "$tag" ]; then
+        tag=$(sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$tmp" | head -1 || true)
+    fi
+    rm -f "$tmp"
+
+    version="${tag#v}"
+    if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        err "Could not parse a semantic version from the latest GitHub release tag: ${tag:-unknown}"
+        return 1
+    fi
+
+    printf '%s\n' "$version"
 }
 
 # --- Subcommand: --current --------------------------------------------------
@@ -119,6 +154,19 @@ restore_backup() {
         ok "Restored Info.plist from $(basename "$plist_bak")"
     fi
     ok "Restored. Version now: $(binary_version "$dir/claude")"
+}
+
+# --- Subcommand: latest -----------------------------------------------------
+install_latest() {
+    local version
+
+    info "Looking up latest Claude Code release on GitHub..."
+    if ! version=$(resolve_latest_version); then
+        exit 1
+    fi
+    ok "Latest Claude Code release: $version"
+
+    install_version "$version"
 }
 
 # --- Subcommand: install <version> -----------------------------------------
@@ -234,6 +282,7 @@ main() {
         cat <<USAGE
 Usage:
   $(basename "$0") <version>     Install a specific version (e.g. 2.1.195)
+  $(basename "$0") latest        Install the latest GitHub release
   $(basename "$0") --current     Show installed / running version
   $(basename "$0") --restore     Roll back to the most recent backup
 
@@ -245,6 +294,7 @@ USAGE
     case "$1" in
         --current|-c) show_current ;;
         --restore|-r) restore_backup ;;
+        latest|--latest|-l) install_latest ;;
         --help|-h)    main ;;
         *)            install_version "$1" ;;
     esac
