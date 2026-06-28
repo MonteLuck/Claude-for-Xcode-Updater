@@ -16,8 +16,8 @@ It downloads the chosen version from the official CDN, verifies it, backs up the
 Clone or download this repository and make the script executable:
 
 ```bash
-git clone https://github.com/<your-user>/Xcode-Claude_Updater.git
-cd Xcode-Claude_Updater
+git clone https://github.com/MonteLuck/Claude-for-Xcode-Updater.git
+cd Claude-for-Xcode-Updater
 chmod +x update-xcode-claude.sh
 ```
 
