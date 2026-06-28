@@ -33,6 +33,30 @@ Example:
 ./update-xcode-claude.sh 2.1.195
 ```
 
+### Optional shell shortcut
+
+To run the updater from anywhere without typing the full script path, add a small function to `~/.zshrc`.
+Adjust the path if you cloned the repository somewhere else:
+
+```zsh
+update-xcode-claude() {
+  "$HOME/Documents/Git/Claude-for-Xcode-Updater/update-xcode-claude.sh" "$@"
+}
+```
+
+Reload your shell config:
+
+```bash
+source ~/.zshrc
+```
+
+Then run:
+
+```bash
+update-xcode-claude 2.1.195
+update-xcode-claude --current
+```
+
 Use the official Claude CLI changelog to find the latest available version:
 
 https://code.claude.com/docs/en/changelog
