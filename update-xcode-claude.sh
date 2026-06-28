@@ -34,6 +34,13 @@ err()  { printf '\033[31mError:\033[0m %s\n' "$*" >&2; }
 info() { printf '\033[36m==>\033[0m %s\n' "$*"; }
 ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
 
+INSTALL_TMP=""
+cleanup_install_tmp() {
+    if [ -n "${INSTALL_TMP:-}" ]; then
+        rm -f "$INSTALL_TMP"
+    fi
+}
+
 detect_platform() {
     case "$(uname -m)" in
         arm64)  echo "darwin-arm64" ;;
@@ -210,7 +217,8 @@ install_version() {
 
     # 2. Download to a temp file.
     tmp="$(mktemp -t claude-"$version")"
-    trap 'rm -f "$tmp"' EXIT
+    INSTALL_TMP="$tmp"
+    trap cleanup_install_tmp EXIT
     info "Downloading…"
     curl -fL --progress-bar -o "$tmp" "$url"
     chmod +x "$tmp"
@@ -268,6 +276,9 @@ PLIST
         err "Generated Info.plist failed validation!"
         exit 1
     fi
+    cleanup_install_tmp
+    INSTALL_TMP=""
+    trap - EXIT
 
     ok "Installed Claude $version into Xcode."
     ok "Verify with: '$bin' --version  ->  $(binary_version "$bin")"
