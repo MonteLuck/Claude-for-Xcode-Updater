@@ -42,12 +42,10 @@ To install the latest Claude Code release published on GitHub:
 ### Optional shell shortcut
 
 To run the updater from anywhere without typing the full script path, add a small function to `~/.zshrc`.
-Adjust the path if you cloned the repository somewhere else:
+From inside the cloned repository, run:
 
-```zsh
-update-xcode-claude() {
-  "$HOME/Documents/Git/Claude-for-Xcode-Updater/update-xcode-claude.sh" "$@"
-}
+```bash
+printf '\nupdate-xcode-claude() {\n  "%s/update-xcode-claude.sh" "$@"\n}\n' "$(pwd)" >> ~/.zshrc
 ```
 
 Reload your shell config:
